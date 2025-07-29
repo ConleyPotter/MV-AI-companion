@@ -1,0 +1,14 @@
+name: Weekly Echo Reflection
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # every Monday at 8am ET
+  workflow_dispatch:
+
+jobs:
+  run-reflection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Worker
+        run: curl -X GET https://memory-reflector.<your_subdomain>.workers.dev
