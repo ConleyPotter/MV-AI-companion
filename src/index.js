@@ -35,28 +35,35 @@ async function fetchLatestEcho(notionToken, dbId) {
   });
 
   const data = await res.json();
-  const page = data.results[0];
+  if (!data.results || data.results.length === 0) {
+    throw new Error("No echoes found");
+  }
 
-  // Extract the four text fields from Notion page properties
-  const pastSelf = extractTextField(page, "Past Self");
-  const presentSelf = extractTextField(page, "Present Self");
-  const futureSelf = extractTextField(page, "Future Self");
-  const temporalOffering = extractTextField(page, "Temporal Offering");
+  const page = data.results[0];
 
   return {
     id: page.id,
-    pastSelf,
-    presentSelf,
-    futureSelf,
-    temporalOffering,
+    pastSelf: extractTextField(page, "Past Self"),
+    presentSelf: extractTextField(page, "Present Self"),
+    futureSelf: extractTextField(page, "Future Self"),
+    temporalOffering: extractTextField(page, "Temporal Offering"),
   };
 }
 
+
 function extractTextField(page, fieldName) {
-  // Defensive extraction from Notion rich_text properties (assuming text property)
-  return (
-    page?.properties?.[fieldName]?.rich_text?.map(rt => rt.text?.content).join("") || ""
-  );
+  const field = page.properties[fieldName];
+  if (
+    field &&
+    field.type === "rich_text" &&
+    Array.isArray(field.rich_text) &&
+    field.rich_text.length > 0 &&
+    field.rich_text[0].text &&
+    field.rich_text[0].text.content
+  ) {
+    return field.rich_text[0].text.content;
+  }
+  return "";
 }
 
 function generateReflectivePrompt({ pastSelf, presentSelf, futureSelf, temporalOffering }) {
