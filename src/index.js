@@ -6,9 +6,14 @@ export default {
 
     // Fetch latest Echo entry with four text fields
     const latestEntry = await fetchLatestEcho(notionToken, notionDatabaseId);
+    console.log("Latest entry from Notion:", latestEntry);
+    if (!latestEntry) {
+      return new Response("No entry found", { status: 404 });
+    }
 
     // Generate the reflective prompt including your user-facing questions and Temporal Offering explanation
     const prompt = generateReflectivePrompt(latestEntry);
+    console.log("Generated prompt:", prompt);
 
     // Get AI reflection from OpenAI
     const reflection = await getReflection(prompt, openaiKey);
