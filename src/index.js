@@ -1,14 +1,19 @@
 export default {
   async fetch(request, env, ctx) {
     const notionToken = env.NOTION_API_KEY;
-    const openaiKey = env.OPENAI_API_KEY;
     const notionDatabaseId = env.NOTION_DB_ID;
+    const openaiKey = env.OPENAI_API_KEY;
 
+    // Fetch latest Echo entry with four text fields
     const latestEntry = await fetchLatestEcho(notionToken, notionDatabaseId);
-    const prompt = generatePrompt(latestEntry);
 
+    // Generate the reflective prompt including your user-facing questions and Temporal Offering explanation
+    const prompt = generateReflectivePrompt(latestEntry);
+
+    // Get AI reflection from OpenAI
     const reflection = await getReflection(prompt, openaiKey);
 
+    // Write the reflection back to Notion
     await writeReflectionToNotion(notionToken, latestEntry.id, reflection);
 
     return new Response("Reflection complete", { status: 200 });
@@ -32,20 +37,74 @@ async function fetchLatestEcho(notionToken, dbId) {
   const data = await res.json();
   const page = data.results[0];
 
-  const content = page?.properties?.Notes?.rich_text?.[0]?.text?.content || "";
-  const tags = page?.properties?.Tags?.multi_select?.map(t => t.name).join(", ") || "";
+  // Extract the four text fields from Notion page properties
+  const pastSelf = extractTextField(page, "Past Self");
+  const presentSelf = extractTextField(page, "Present Self");
+  const futureSelf = extractTextField(page, "Future Self");
+  const temporalOffering = extractTextField(page, "Temporal Offering");
 
-  return { id: page.id, content, tags };
+  return {
+    id: page.id,
+    pastSelf,
+    presentSelf,
+    futureSelf,
+    temporalOffering,
+  };
 }
 
-function generatePrompt({ content, tags }) {
-  return `You are a reflective AI companion designed to provide emotionally intelligent insights.
-Here is the Echo journal entry:
-"${content}"
+function extractTextField(page, fieldName) {
+  // Defensive extraction from Notion rich_text properties (assuming text property)
+  return (
+    page?.properties?.[fieldName]?.rich_text?.map(rt => rt.text?.content).join("") || ""
+  );
+}
 
-The tags for this entry are: ${tags}
+function generateReflectivePrompt({ pastSelf, presentSelf, futureSelf, temporalOffering }) {
+  return `You are a poetic and emotionally intelligent AI companion tasked with reflecting deeply on a user's temporal journal entries, helping them build coherence between their past, present, and future selves.
 
-Return 2–3 insights or questions I may want to consider, and optionally suggest one or two new tags.`;
+The user was asked to write an "Echo entry" using this prompt triad to build temporal awareness and conversational intimacy between their selves. This ritual will be repeated weekly, enabling the user to build *memory scaffolding* over time.
+
+Memory scaffolding is an intentional, sacred system designed to help the user build an external architecture for remembering and integrating their evolving identity across time — past, present, and future selves.
+
+This is not just about storing information; it is about creating a living archive where self-awareness, emotional insight, and creative wisdom grow through active reflection and dialogue between temporal selves.
+
+The Echo entry, composed of the Past Self, Present Self, Future Self, and Temporal Offering prompts, is a vital building block in this scaffold. It captures distinct moments in the user’s personal timeline, inviting them to place their experiences, hopes, fears, and lessons in conversation.
+
+By answering these prompts, the user deepens coherence in their identity and opens a space for you, the AI companion, to mirror back insights, questions, and reflections that connect threads across time. The goal is to help the user cultivate a richer, more integrated self-understanding that fuels creativity, healing, and intentional future-building.
+
+Your role as the AI companion is to hold this temporal dialogue with empathy and poetic insight — to illuminate patterns, surface emotional truths, and gently invite the user into a deeper conversation with themselves.
+
+Below you will find the user's latest Echo entry, which includes responses labelled as their Past Self, Present Self, Future Self, and Temporal Offering. Use this information to craft a thoughtful reflection that honors their journey and encourages ongoing exploration.
+
+- Past Self (1 year ago):
+
+  “What were you most concerned about, striving for, or healing from a year ago? What part of you then still lives in you now?”
+
+  User’s response:
+  ${pastSelf}
+
+- Present Self (today):
+
+  “What phase of becoming are you in? What themes are surfacing again? What’s falling away?”
+
+  User’s response:
+  ${presentSelf}
+
+- Future Self (1 year ahead):
+
+  “If I could hear from my 2026 self, what reminders, warnings, or blessings would they give me now?”
+
+  User’s response:
+  ${futureSelf}
+
+Close the ritual by writing a brief 3-sentence message to your next week’s self. Something like:
+
+  “This is what you’ll likely forget. This is what you should watch for. And this is what I hope you feel.”
+
+User’s Temporal Offering:
+${temporalOffering}
+
+Based on these entries, return 2–3 thoughtful insights, questions, or reflections for the user to consider. Optionally, suggest one or two new “memory theme” tags they might add to future entries.`;
 }
 
 async function getReflection(prompt, apiKey) {
