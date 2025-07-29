@@ -11,4 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Run Worker
-        run: curl -X GET https://memory-reflector.<your_subdomain>.workers.dev
+        run: curl -X GET https://memory-reflector.conley-potter.workers.dev
